@@ -23,6 +23,14 @@ const int GRID_SIZE = 12;
 const int TILE_SIZE = 32;
 const int MINE_CHANCE = 5;
 
+void initBoards(int dataBoard[GRID_SIZE][GRID_SIZE], int displayBoard[GRID_SIZE][GRID_SIZE]);
+void calculateAdjacentMines(int dataBoard[GRID_SIZE][GRID_SIZE]);
+void setupGame(int dataBoard[GRID_SIZE][GRID_SIZE], int displayBoard[GRID_SIZE][GRID_SIZE]);
+void loadAssets(Texture& tileTexture, Sprite& tileSprite);
+void eventHandling(RenderWindow& app, int dataBoard[GRID_SIZE][GRID_SIZE], int displayBoard[GRID_SIZE][GRID_SIZE], bool& mineClicked);
+void drawGame(RenderWindow& app, int displayBoard[GRID_SIZE][GRID_SIZE], int dataBoard[GRID_SIZE][GRID_SIZE], Sprite& tileSprite, bool& mineClicked);
+
+
 int minesweeper()
 {
     srand(time(0));
@@ -33,63 +41,108 @@ int minesweeper()
     int displayBoard[GRID_SIZE][GRID_SIZE]; //for showing
 
     Texture tileTexture;
-    tileTexture.loadFromFile("images/minesweeper/tiles.jpg");
-    Sprite tileSprite(tileTexture);
+    Sprite tileSprite;
 
-    for (int i=1;i<=BOARD_SIZE;i++)
-     for (int j=1;j<=BOARD_SIZE;j++)
-      {
-        displayBoard[i][j]= TileType::Unrevealed;
-        if (rand()%MINE_CHANCE==0)  dataBoard[i][j]=TileType::Mine;
-        else dataBoard[i][j]=TileType::Empty;
-      }
-
-    for (int i=1;i<=BOARD_SIZE;i++)
-     for (int j=1;j<=BOARD_SIZE;j++)
-      {
-        int numAdjacentMines=0;
-        if (dataBoard[i][j]== TileType::Mine) continue;
-        if (dataBoard[i+1][j]== TileType::Mine) numAdjacentMines++;
-        if (dataBoard[i][j+1]== TileType::Mine) numAdjacentMines++;
-        if (dataBoard[i-1][j]== TileType::Mine) numAdjacentMines++;
-        if (dataBoard[i][j-1]== TileType::Mine) numAdjacentMines++;
-        if (dataBoard[i+1][j+1]== TileType::Mine) numAdjacentMines++;
-        if (dataBoard[i-1][j-1]== TileType::Mine) numAdjacentMines++;
-        if (dataBoard[i-1][j+1]== TileType::Mine) numAdjacentMines++;
-        if (dataBoard[i+1][j-1]== TileType::Mine) numAdjacentMines++;
-        dataBoard[i][j]= numAdjacentMines;
-      }
+    loadAssets(tileTexture, tileSprite);
+    setupGame(dataBoard, displayBoard);
 
     while (app.isOpen())
     {
-        Vector2i mousePos = Mouse::getPosition(app);
-        int tileX = mousePos.x/TILE_SIZE;
-        int tileY = mousePos.y/TILE_SIZE;
+        bool mineClicked = false;
 
-        Event event;
-        while (app.pollEvent(event))
-        {
-            if (event.type == Event::Closed)
-                app.close();
-
-            if (event.type == Event::MouseButtonPressed)
-              if (event.key.code == Mouse::Left) displayBoard[tileX][tileY]=dataBoard[tileX][tileY];
-              else if (event.key.code == Mouse::Right) displayBoard[tileX][tileY]= TileType::Flag;
-        }
+        eventHandling(app, dataBoard, displayBoard, mineClicked);
 
         app.clear(Color::White);
 
-        for (int i=1;i<=BOARD_SIZE;i++)
-         for (int j=1;j<=BOARD_SIZE;j++)
-          {
-           if (displayBoard[tileX][tileY]== TileType::Mine) displayBoard[i][j]=dataBoard[i][j];
-           tileSprite.setTextureRect(IntRect(displayBoard[i][j]*TILE_SIZE,0,TILE_SIZE,TILE_SIZE));
-           tileSprite.setPosition(i*TILE_SIZE, j*TILE_SIZE);
-           app.draw(tileSprite);
-          }
-
-        app.display();
+        drawGame(app, displayBoard, dataBoard, tileSprite, mineClicked);
     }
 
     return 0;
 }
+
+
+void setupGame(int dataBoard[GRID_SIZE][GRID_SIZE], int displayBoard[GRID_SIZE][GRID_SIZE])
+{
+    initBoards(dataBoard, displayBoard);
+    calculateAdjacentMines(dataBoard);
+}
+
+
+void loadAssets(Texture& tileTexture, Sprite& tileSprite)
+{
+    tileTexture.loadFromFile("images/minesweeper/tiles.jpg");
+    tileSprite.setTexture(tileTexture);
+}
+
+
+void eventHandling(RenderWindow& app, int dataBoard[GRID_SIZE][GRID_SIZE], int displayBoard[GRID_SIZE][GRID_SIZE], bool& mineClicked)
+{
+    Vector2i mousePos = Mouse::getPosition(app);
+    int tileX = mousePos.x / TILE_SIZE;
+    int tileY = mousePos.y / TILE_SIZE;
+
+    Event event;
+    while (app.pollEvent(event))
+    {
+        if (event.type == Event::Closed)
+            app.close();
+
+        if (event.type == Event::MouseButtonPressed)
+            if (event.key.code == Mouse::Left)
+            {
+                if (dataBoard[tileX][tileY] == TileType::Mine)
+                    mineClicked = true;
+
+                displayBoard[tileX][tileY] = dataBoard[tileX][tileY];
+            }
+            else if (event.key.code == Mouse::Right) displayBoard[tileX][tileY] = TileType::Flag;
+    }
+}
+
+
+void drawGame(RenderWindow& app, int displayBoard[GRID_SIZE][GRID_SIZE], int dataBoard[GRID_SIZE][GRID_SIZE], Sprite& tileSprite, bool& mineClicked)
+{
+    for (int i = 1; i <= BOARD_SIZE; i++)
+        for (int j = 1; j <= BOARD_SIZE; j++)
+        {
+            if (mineClicked == true) displayBoard[i][j] = dataBoard[i][j];
+            tileSprite.setTextureRect(IntRect(displayBoard[i][j] * TILE_SIZE, 0, TILE_SIZE, TILE_SIZE));
+            tileSprite.setPosition(i * TILE_SIZE, j * TILE_SIZE);
+            app.draw(tileSprite);
+        }
+
+    app.display();
+}
+
+
+void initBoards(int dataBoard[GRID_SIZE][GRID_SIZE], int displayBoard[GRID_SIZE][GRID_SIZE])
+{
+    for (int i = 1; i <= BOARD_SIZE; i++)
+        for (int j = 1; j <= BOARD_SIZE; j++)
+        {
+            displayBoard[i][j] = TileType::Unrevealed;
+            if (rand() % MINE_CHANCE == 0)  dataBoard[i][j] = TileType::Mine;
+            else dataBoard[i][j] = TileType::Empty;
+        }
+}
+
+
+void calculateAdjacentMines(int dataBoard[GRID_SIZE][GRID_SIZE])
+{
+    for (int i = 1; i <= BOARD_SIZE; i++)
+        for (int j = 1; j <= BOARD_SIZE; j++)
+        {
+            int numAdjacentMines = 0;
+            if (dataBoard[i][j] == TileType::Mine) continue;
+            if (dataBoard[i + 1][j] == TileType::Mine) numAdjacentMines++;
+            if (dataBoard[i][j + 1] == TileType::Mine) numAdjacentMines++;
+            if (dataBoard[i - 1][j] == TileType::Mine) numAdjacentMines++;
+            if (dataBoard[i][j - 1] == TileType::Mine) numAdjacentMines++;
+            if (dataBoard[i + 1][j + 1] == TileType::Mine) numAdjacentMines++;
+            if (dataBoard[i - 1][j - 1] == TileType::Mine) numAdjacentMines++;
+            if (dataBoard[i - 1][j + 1] == TileType::Mine) numAdjacentMines++;
+            if (dataBoard[i + 1][j - 1] == TileType::Mine) numAdjacentMines++;
+            dataBoard[i][j] = numAdjacentMines;
+        }
+}
+
